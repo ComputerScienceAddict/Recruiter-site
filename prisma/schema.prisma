@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AnalysisSession {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  jobDescription String
+  filters       String?  // JSON string of RoleFilters
+  candidates    Candidate[]
+}
+
+model Candidate {
+  id                String   @id @default(cuid())
+  sessionId         String
+  session           AnalysisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  rawText           String   // Extracted resume text
+  sourceFile        String?  // Original filename
+  fullName          String?
+  email             String?
+  phone             String?
+  currentTitle      String?
+  companies         String?  // JSON array
+  yearsExperience   Float?
+  skills            String?  // JSON array
+  education         String?  // JSON array
+  location          String?
+  overallScore      Float
+  summary           String?
+  strengths         String?  // JSON array
+  weaknesses        String?  // JSON array
+  redFlags          String?  // JSON array
+  matchReasons      String?  // JSON array
+  mismatchReasons   String?  // JSON array
+  outreachMessage   String?
+  shortlisted       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+}
