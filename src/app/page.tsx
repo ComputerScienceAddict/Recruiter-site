@@ -48,6 +48,14 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Analysis failed');
 
+      const session = {
+        id: data.sessionId,
+        jobDescription: data.jobDescription,
+        createdAt: data.createdAt,
+        candidates: data.candidates,
+      };
+      const { saveSession } = await import('@/lib/storage');
+      saveSession(session);
       router.push(`/results/${data.sessionId}`);
     } catch (e) {
       setError((e as Error).message);

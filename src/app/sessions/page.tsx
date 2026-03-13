@@ -3,26 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
-
-interface Session {
-  id: string;
-  createdAt: string;
-  jobDescription: string;
-  candidateCount: number;
-}
+import { listSessions } from '@/lib/storage';
 
 export default function SessionsPage() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState<{ id: string; jobDescription: string; createdAt: string; candidateCount: number }[]>([]);
 
   useEffect(() => {
-    fetch('/api/sessions')
-      .then((r) => r.json())
-      .then((data) => {
-        setSessions(data.sessions ?? []);
-      })
-      .catch(() => setSessions([]))
-      .finally(() => setLoading(false));
+    setSessions(listSessions().reverse());
   }, []);
 
   return (
@@ -33,14 +20,10 @@ export default function SessionsPage() {
           Past sessions
         </h1>
         <p className="mt-2 text-sm text-surface-600">
-          Reopen a previous analysis to review candidates and export shortlists.
+          Reopen a previous analysis (stored in this browser session).
         </p>
 
-        {loading ? (
-          <div className="mt-12 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-300 border-t-surface-700" />
-          </div>
-        ) : sessions.length === 0 ? (
+        {sessions.length === 0 ? (
           <div className="mt-12 rounded-lg border border-dashed border-surface-300 py-16 text-center">
             <p className="text-sm text-surface-500">No sessions yet.</p>
             <Link
@@ -58,7 +41,7 @@ export default function SessionsPage() {
                   href={`/results/${s.id}`}
                   className="block rounded-lg border border-surface-200 bg-white p-4 transition-colors hover:border-surface-300 hover:bg-surface-50/50"
                 >
-                  <p className="text-sm text-surface-900">{s.jobDescription}</p>
+                  <p className="text-sm text-surface-900">{s.jobDescription.slice(0, 150)}{s.jobDescription.length > 150 ? '…' : ''}</p>
                   <p className="mt-1 text-xs text-surface-500">
                     {s.candidateCount} candidates · {new Date(s.createdAt).toLocaleString()}
                   </p>

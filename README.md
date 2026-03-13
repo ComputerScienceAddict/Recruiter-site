@@ -10,7 +10,7 @@ A premium internal recruiting tool for screening candidates against job descript
 - **Local AI analysis**: Ollama-powered candidate scoring, summaries, strengths/weaknesses, and outreach
 - **Ranked results**: Sort by score or name, filter by shortlist, compare candidates
 - **Personalized outreach**: Editable, human-sounding messages for top candidates
-- **Session history**: Reopen past analyses, export shortlists to CSV
+- **Session history**: Reopen past analyses (stored in browser), export shortlists to CSV. No database — everything runs in the browser and via Ollama.
 
 ## Prerequisites
 
@@ -38,26 +38,18 @@ cp .env.example .env
 Edit `.env` if needed:
 
 ```
-DATABASE_URL="file:./dev.db"
 OLLAMA_BASE_URL="http://localhost:11434"
 OLLAMA_MODEL="llama3.1:8b"
 ```
 
-### 3. Initialize database
-
-```bash
-npm run db:generate
-npm run db:push
-```
-
-### 4. Start Ollama (if not already running)
+### 3. Start Ollama (if not already running)
 
 ```bash
 ollama serve
 ollama pull llama3.1:8b
 ```
 
-### 5. Run the app
+### 4. Run the app
 
 ```bash
 npm run dev
@@ -69,17 +61,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```
 recruiter-platform/
-├── prisma/
-│   └── schema.prisma       # SQLite schema
 ├── src/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── upload/parse/   # Parse resumes/CSV
 │   │   │   ├── analyze/        # Run Ollama analysis
-│   │   │   ├── sessions/       # List & fetch sessions
-│   │   │   ├── candidates/     # Shortlist
 │   │   │   ├── ollama/health/  # Ollama status
-│   │   │   └── export/csv/     # Export candidates
+│   │   │   └── ollama/health/  # Ollama status
 │   │   ├── page.tsx            # Main analysis page
 │   │   ├── results/[id]/       # Results dashboard
 │   │   └── sessions/           # Session history
@@ -90,7 +78,7 @@ recruiter-platform/
 │   │   ├── analysis-prompt.ts  # Prompt templates
 │   │   ├── analysis-pipeline.ts
 │   │   ├── scoring.ts          # Rule-based scoring
-│   │   └── db.ts               # Prisma helpers
+│   │   └── storage.ts          # Client sessionStorage
 │   └── types/
 ```
 
@@ -175,7 +163,6 @@ https://abc-xyz-123.trycloudflare.com
 
 - **Quick Tunnels change URL on restart.** Each time you run `cloudflared tunnel --url http://localhost:11434`, a new URL is generated. You must update `OLLAMA_BASE_URL` in Vercel and redeploy.
 - **Security:** The tunnel URL is public. Anyone with it can use your Ollama instance. For testing only; do not share the URL.
-- **Vercel + DB:** This app uses SQLite by default. For production on Vercel, switch to a hosted database (e.g. Vercel Postgres or Supabase) and set `DATABASE_URL` accordingly.
 
 ### Stable URL (optional)
 

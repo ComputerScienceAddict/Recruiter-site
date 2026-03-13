@@ -6,92 +6,95 @@ import { Nav } from '@/components/Nav';
 import { CandidateCard } from '@/components/CandidateCard';
 import { CandidateDetail } from '@/components/CandidateDetail';
 import { CompareView } from '@/components/CompareView';
-
-interface Candidate {
-  id: string;
-  fullName: string | null;
-  email: string | null;
-  phone: string | null;
-  currentTitle: string | null;
-  companies: string[];
-  yearsExperience: number | null;
-  skills: string[];
-  education: string[];
-  location: string | null;
-  overallScore: number;
-  summary: string | null;
-  strengths: string[];
-  weaknesses: string[];
-  redFlags: string[];
-  matchReasons: string[];
-  mismatchReasons: string[];
-  outreachMessage: string | null;
-  shortlisted: boolean;
-  sourceFile: string | null;
-}
-
-interface Session {
-  id: string;
-  createdAt: string;
-  jobDescription: string;
-  filters: unknown;
-  candidates: Candidate[];
-}
+import { getSession, saveSession, type StoredSession, type StoredCandidate } from '@/lib/storage';
 
 export default function ResultsPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<StoredSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'score' | 'name'>('score');
   const [shortlistOnly, setShortlistOnly] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
-  const [showCompare, setShowCompare] = useState(false);
-
-  const fetchSession = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/sessions/${id}`);
-      if (!res.ok) throw new Error('Not found');
-      const data = await res.json();
-      setSession(data);
-    } catch {
-      router.push('/');
-    } finally {
-      setLoading(false);
-    }
-  }, [id, router]);
 
   useEffect(() => {
-    fetchSession();
-  }, [fetchSession]);
+    const s = getSession(id);
+    setSession(s);
+    if (!s) router.push('/');
+    setLoading(false);
+  }, [id, router]);
 
-  const toggleShortlist = async (candidateId: string, shortlisted: boolean) => {
-    await fetch(`/api/candidates/${candidateId}/shortlist`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shortlisted }),
-    });
-    fetchSession();
+  const updateCandidates = useCallback(
+    (updater: (c: StoredCandidate[]) => StoredCandidate[]) => {
+      if (!session) return;
+      const next = { ...session, candidates: updater(session.candidates) };
+      setSession(next);
+      saveSession(next);
+    },
+    [session]
+  );
+
+  const toggleShortlist = (candidateId: string, shortlisted: boolean) => {
+    updateCandidates((arr) =>
+      arr.map((c) => (c.id === candidateId ? { ...c, shortlisted } : c))
+    );
   };
 
-  const handleExport = async (shortlisted: boolean) => {
-    setExporting(true);
-    try {
-      const url = `/api/export/csv?sessionId=${id}&shortlistedOnly=${shortlisted}`;
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `candidates-${shortlisted ? 'shortlist' : 'all'}.csv`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    } finally {
-      setExporting(false);
-    }
+  const handleExport = (shortlisted: boolean) => {
+    if (!session) return;
+    let list = session.candidates;
+    if (shortlisted) list = list.filter((c) => c.shortlisted);
+
+    const headers = [
+      'Name',
+      'Email',
+      'Phone',
+      'Title',
+      'Companies',
+      'Years Exp',
+      'Skills',
+      'Education',
+      'Location',
+      'Score',
+      'Summary',
+      'Strengths',
+      'Weaknesses',
+      'Match Reasons',
+      'Outreach',
+    ];
+    const rows = list.map((c) => [
+      c.fullName ?? '',
+      c.email ?? '',
+      c.phone ?? '',
+      c.currentTitle ?? '',
+      JSON.stringify(c.companies ?? []),
+      c.yearsExperience ?? '',
+      JSON.stringify(c.skills ?? []),
+      JSON.stringify(c.education ?? []),
+      c.location ?? '',
+      c.overallScore ?? '',
+      c.summary ?? '',
+      JSON.stringify(c.strengths ?? []),
+      JSON.stringify(c.weaknesses ?? []),
+      JSON.stringify(c.matchReasons ?? []),
+      c.outreachMessage ?? '',
+    ]);
+    const csv =
+      headers.join(',') +
+      '\n' +
+      rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `candidates-${shortlisted ? 'shortlist' : 'all'}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
+
+  const [showCompare, setShowCompare] = useState(false);
 
   if (loading || !session) {
     return (
@@ -151,15 +154,13 @@ export default function ResultsPage() {
               <span className="h-4 w-px bg-surface-200" />
               <button
                 onClick={() => handleExport(false)}
-                disabled={exporting}
-                className="text-surface-600 hover:text-surface-900 disabled:opacity-40"
+                className="text-surface-600 hover:text-surface-900"
               >
                 Export
               </button>
               <button
                 onClick={() => handleExport(true)}
-                disabled={exporting}
-                className="text-surface-600 hover:text-surface-900 disabled:opacity-40"
+                className="text-surface-600 hover:text-surface-900"
               >
                 Shortlist CSV
               </button>

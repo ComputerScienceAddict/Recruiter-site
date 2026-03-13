@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeCandidate } from '@/lib/analysis-pipeline';
-import {
-  createSession,
-  saveCandidates,
-} from '@/lib/db';
 import type { ParsedCandidate, RoleFilters } from '@/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export const maxDuration = 300;
 
@@ -49,10 +46,10 @@ export async function POST(request: NextRequest) {
           email: c.email,
           phone: c.phone,
           currentTitle: c.currentTitle,
-          companies: c.companies,
+          companies: c.companies ?? [],
           yearsExperience: c.yearsExperience,
-          skills: c.skills,
-          education: c.education,
+          skills: c.skills ?? [],
+          education: c.education ?? [],
           location: c.location,
           overallScore: 0,
           summary: `Analysis failed: ${(e as Error).message}`,
@@ -68,17 +65,40 @@ export async function POST(request: NextRequest) {
 
     analyses.sort((a, b) => b.overallScore - a.overallScore);
 
-    const session = await createSession(jobDescription, filters);
+    const sessionId = uuidv4();
     const sourceFiles: Record<number, string> = {};
     rawCandidates.forEach((c, i) => {
       if (c.sourceFile) sourceFiles[i] = c.sourceFile;
     });
-    await saveCandidates(session.id, analyses, sourceFiles);
+    const candidates = analyses.map((r, i) => ({
+      id: uuidv4(),
+      fullName: r.fullName,
+      email: r.email,
+      phone: r.phone,
+      currentTitle: r.currentTitle,
+      companies: r.companies ?? [],
+      yearsExperience: r.yearsExperience,
+      skills: r.skills ?? [],
+      education: r.education ?? [],
+      location: r.location,
+      overallScore: r.overallScore,
+      summary: r.summary,
+      strengths: r.strengths ?? [],
+      weaknesses: r.weaknesses ?? [],
+      redFlags: r.redFlags ?? [],
+      matchReasons: r.matchReasons ?? [],
+      mismatchReasons: r.mismatchReasons ?? [],
+      outreachMessage: r.outreachMessage,
+      shortlisted: false,
+      sourceFile: sourceFiles[i] ?? null,
+    }));
 
     return NextResponse.json({
-      sessionId: session.id,
-      candidates: analyses,
-      total: analyses.length,
+      sessionId,
+      candidates,
+      total: candidates.length,
+      jobDescription,
+      createdAt: new Date().toISOString(),
     });
   } catch (e) {
     console.error('Analyze error:', e);
