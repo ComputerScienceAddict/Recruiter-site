@@ -13,4 +13,4 @@ try {
 
 Write-Host "Starting Cloudflare tunnel..." -ForegroundColor Cyan
 Write-Host "Keep this window open. Update OLLAMA_BASE_URL in Vercel with the URL shown below." -ForegroundColor Yellow
-& "C:\Progra~2\cloudflared\cloudflared.exe" tunnel --url http://localhost:11434
+& "C:\Progra~2\cloudflared\cloudflared.exe" tunnel --url http://localhost:11434 --http-host-header localhost:11434

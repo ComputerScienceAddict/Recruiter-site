@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "tunnel": "C:\\Progra~2\\cloudflared\\cloudflared.exe tunnel --url http://localhost:11434"
+    "tunnel": "C:\\Progra~2\\cloudflared\\cloudflared.exe tunnel --url http://localhost:11434 --http-host-header localhost:11434"
   },
   "dependencies": {
     "next": "^14.2.0",
